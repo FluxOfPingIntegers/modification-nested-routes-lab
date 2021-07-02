@@ -1,3 +1,4 @@
+require 'pry'
 class SongsController < ApplicationController
   def index
     if params[:artist_id]
@@ -25,10 +26,15 @@ class SongsController < ApplicationController
   end
 
   def new
-    @song = Song.new
+    if params[:artist_id] && !Artist.exists?(params[:artist_id])
+      redirect_to artists_path, alert: "Artist not found."
+    else
+      @song = Song.new(artist_id: params[:artist_id]) # if there is reached via non-nested resource, params[:artist_id] is nil anyway
+    end
   end
 
   def create
+# binding.pry
     @song = Song.new(song_params)
 
     if @song.save
@@ -39,7 +45,17 @@ class SongsController < ApplicationController
   end
 
   def edit
-    @song = Song.find(params[:id])
+    if params[:artist_id]
+      artist = Artist.find_by(id: params[:artist_id])
+      if artist.nil?
+        redirect_to artists_path, alert: "Artist not found."
+      else
+        @song = artist.songs.find_by(id: params[:id])
+        redirect_to artist_songs_path(artist), alert: "Song not found." if @song.nil?
+      end
+    else
+      @song = Song.find(params[:id])
+    end
   end
 
   def update
@@ -64,7 +80,7 @@ class SongsController < ApplicationController
   private
 
   def song_params
-    params.require(:song).permit(:title, :artist_name)
+    params.require(:song).permit(:artist_id, :title, :artist_name)
   end
 end
 
